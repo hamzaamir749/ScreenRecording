@@ -52,33 +52,8 @@ class ScreenRecordingService : Service() {
         }
     }
 
-    private fun saveToGallery() {
-
-        serviceScope.launch {
-            val contentValues = ContentValues().apply {
-                put(MediaStore.Video.Media.DISPLAY_NAME, "video_${System.currentTimeMillis()}.mp4")
-                put(MediaStore.Video.Media.RELATIVE_PATH, "Movies/ScreenRecordings")
-            }
-            val videoCollection = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                MediaStore.Video.Media.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY)
-            } else {
-                MediaStore.Video.Media.EXTERNAL_CONTENT_URI
-            }
-
-            contentResolver.insert(videoCollection, contentValues)?.let { uri ->
-
-                contentResolver.openOutputStream(uri)?.use { outputStream ->
-                    FileInputStream(outputFile).use { inputStream ->
-                        inputStream.copyTo(outputStream)
-                    }
-
-                }
-            }
-        }
-    }
-
-    private val outputFile by lazy {
-        File(cacheDir, "tmp.mp4")
+    override fun onBind(intent: Intent?): IBinder? {
+        return null
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -106,18 +81,7 @@ class ScreenRecordingService : Service() {
         return START_STICKY
     }
 
-    private fun stopRecording() {
-        mediaRecorder.stop()
-        mediaProjection?.stop()
-        mediaRecorder.reset()
-    }
-
-    private fun stopService() {
-        _isServiceRunning.value = false
-        stopForeground(STOP_FOREGROUND_REMOVE)
-        stopSelf()
-    }
-
+    //SetUp Recording
     private fun startRecording(intent: Intent) {
         val config = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             intent.getParcelableExtra(
@@ -140,32 +104,6 @@ class ScreenRecordingService : Service() {
         initializeRecorder()
         mediaRecorder.start()
         virtualDisplay = createVirtualDisplay()
-    }
-
-
-    private fun getWindowSize(): Pair<Int, Int> {
-        val calculator = WindowMetricsCalculator.getOrCreate()
-        val metrics = calculator.computeMaximumWindowMetrics(applicationContext)
-        return metrics.bounds.width() to metrics.bounds.height()
-    }
-
-
-    private fun getScaledDimensions(
-        maxWidth: Int,
-        maxHeight: Int,
-        scaleFactor: Float = 0.8f
-    ): Pair<Int, Int> {
-        val aspectRatio = maxWidth / maxHeight.toFloat()
-
-        var newWidth = (maxWidth * scaleFactor).toInt()
-        var newHeight = (newWidth / aspectRatio).toInt()
-
-        if (newHeight > (maxHeight * scaleFactor)) {
-            newHeight = (maxHeight * scaleFactor).toInt()
-            newWidth = (newHeight * aspectRatio).toInt()
-        }
-
-        return newWidth to newHeight
     }
 
     private fun initializeRecorder() {
@@ -199,6 +137,72 @@ class ScreenRecordingService : Service() {
         )
     }
 
+    private fun saveToGallery() {
+
+        serviceScope.launch {
+            val contentValues = ContentValues().apply {
+                put(MediaStore.Video.Media.DISPLAY_NAME, "video_${System.currentTimeMillis()}.mp4")
+                put(MediaStore.Video.Media.RELATIVE_PATH, "Movies/ScreenRecordings")
+            }
+            val videoCollection = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                MediaStore.Video.Media.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY)
+            } else {
+                MediaStore.Video.Media.EXTERNAL_CONTENT_URI
+            }
+
+            contentResolver.insert(videoCollection, contentValues)?.let { uri ->
+
+                contentResolver.openOutputStream(uri)?.use { outputStream ->
+                    FileInputStream(outputFile).use { inputStream ->
+                        inputStream.copyTo(outputStream)
+                    }
+
+                }
+            }
+        }
+    }
+
+    private val outputFile by lazy {
+        File(cacheDir, "tmp.mp4")
+    }
+
+    private fun getWindowSize(): Pair<Int, Int> {
+        val calculator = WindowMetricsCalculator.getOrCreate()
+        val metrics = calculator.computeMaximumWindowMetrics(applicationContext)
+        return metrics.bounds.width() to metrics.bounds.height()
+    }
+
+    private fun getScaledDimensions(
+        maxWidth: Int,
+        maxHeight: Int,
+        scaleFactor: Float = 0.8f
+    ): Pair<Int, Int> {
+        val aspectRatio = maxWidth / maxHeight.toFloat()
+
+        var newWidth = (maxWidth * scaleFactor).toInt()
+        var newHeight = (newWidth / aspectRatio).toInt()
+
+        if (newHeight > (maxHeight * scaleFactor)) {
+            newHeight = (maxHeight * scaleFactor).toInt()
+            newWidth = (newHeight * aspectRatio).toInt()
+        }
+
+        return newWidth to newHeight
+    }
+
+    //Stop Recording
+    private fun stopRecording() {
+        mediaRecorder.stop()
+        mediaProjection?.stop()
+        mediaRecorder.reset()
+    }
+
+    private fun stopService() {
+        _isServiceRunning.value = false
+        stopForeground(STOP_FOREGROUND_REMOVE)
+        stopSelf()
+    }
+
     override fun onDestroy() {
         super.onDestroy()
         _isServiceRunning.value = false
@@ -210,10 +214,6 @@ class ScreenRecordingService : Service() {
         virtualDisplay?.release()
         mediaProjection?.unregisterCallback(mediaProjectionCallback)
         mediaProjection = null
-    }
-
-    override fun onBind(intent: Intent?): IBinder? {
-        return null
     }
 
     companion object {
