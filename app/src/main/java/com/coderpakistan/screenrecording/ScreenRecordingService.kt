@@ -30,6 +30,7 @@ import java.io.FileInputStream
 data class ScreenRecordConfig(val resultCode: Int, val data: Intent) : Parcelable
 
 class ScreenRecordingService : Service() {
+
     private var mediaProjection: MediaProjection? = null
     private var virtualDisplay: VirtualDisplay? = null
     private val mediaRecorder by lazy {
@@ -42,6 +43,9 @@ class ScreenRecordingService : Service() {
     private val serviceScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
     private val mediaProjectionManager by lazy {
         getSystemService<MediaProjectionManager>()
+    }
+    private val outputFile by lazy {
+        File(cacheDir, "tmp.mp4")
     }
     private val mediaProjectionCallback = object : MediaProjection.Callback() {
         override fun onStop() {
@@ -162,9 +166,7 @@ class ScreenRecordingService : Service() {
         }
     }
 
-    private val outputFile by lazy {
-        File(cacheDir, "tmp.mp4")
-    }
+
 
     private fun getWindowSize(): Pair<Int, Int> {
         val calculator = WindowMetricsCalculator.getOrCreate()
